@@ -34,7 +34,7 @@ build/
 .env.*
 application-*.yml
 application-*.yaml
-application-*.properties
+application*.properties
 
 ### VS Code ###
 .vscode/

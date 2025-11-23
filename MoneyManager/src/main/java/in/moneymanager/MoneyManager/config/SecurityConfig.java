@@ -34,10 +34,16 @@ public class SecurityConfig {
         httpSecurity.cors(Customizer.withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth ->
-                        auth.requestMatchers("/status","/health","/register","/login","/activate")
-                                .permitAll()
-                                .anyRequest()
-                                .authenticated())
+                auth.requestMatchers(
+                        "/login",
+                                "/register",
+                                "/activate",
+                                "/status",
+                                "/health",
+                                "/refresh"
+                        ).permitAll()
+                        .anyRequest()
+                        .authenticated())
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
