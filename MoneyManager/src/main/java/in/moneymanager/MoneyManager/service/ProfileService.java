@@ -3,21 +3,19 @@ package in.moneymanager.MoneyManager.service;
 import in.moneymanager.MoneyManager.dto.AuthDTO;
 import in.moneymanager.MoneyManager.dto.ProfileDTO;
 import in.moneymanager.MoneyManager.entity.ProfileEntity;
+import in.moneymanager.MoneyManager.entity.RefreshToken;
 import in.moneymanager.MoneyManager.repository.ProfileRepository;
 import in.moneymanager.MoneyManager.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -35,6 +33,7 @@ public class ProfileService {
 
     @Value("${money.manager.backend.url}")
     private String activationURL;
+    private final RefreshTokenService refreshTokenService;
 
     public ProfileDTO registerProfile(ProfileDTO profileDTO){
         ProfileEntity newProfile = toEntity(profileDTO);
@@ -108,25 +107,26 @@ public class ProfileService {
 
     public Map<String, Object> authenticateAndGenerateToken(AuthDTO authDTO) {
         try {
-            // 1. Authenticate the user
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(authDTO.getEmail(), authDTO.getPassword())
             );
 
-            // 2. Generate JWT token
-            String token = jwtUtil.generateToken(authDTO.getEmail());
+            String accessToken = jwtUtil.generateToken(authDTO.getEmail());
 
-            // 3. Build response
+            ProfileEntity profile = profileRepository.findByEmail(authDTO.getEmail())
+                    .orElseThrow(() -> new UsernameNotFoundException("Profile not found"));
+
+            RefreshToken refreshToken = refreshTokenService.createRefreshToken(profile);
+
             Map<String, Object> response = new HashMap<>();
             response.put("user", getPublicProfile(authDTO.getEmail()));
-            response.put("token", token);
+            response.put("accessToken", accessToken);
+            response.put("refreshToken", refreshToken.getToken());
 
             return response;
 
         } catch (BadCredentialsException e) {
             throw new BadCredentialsException("Invalid email or password");
-        } catch (AuthenticationException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Authentication failed: " + e.getMessage());
         }
     }
 }

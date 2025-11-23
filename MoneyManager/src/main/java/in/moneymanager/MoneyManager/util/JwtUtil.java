@@ -27,8 +27,8 @@ public class JwtUtil {
     // Generate Token with Email
     public String generateToken(String email) {
         Map<String,Object> claims = new HashMap<>();
-        // Token Validity
-        long EXPIRATION_DATE = 24 * 60 * 60 * 1000;
+        // Token Validity - 15 minutes
+        long EXPIRATION_DATE = 15 * 60 * 1000;
         return Jwts.builder()
                 .setClaims(claims)
                 .setSubject(email)
