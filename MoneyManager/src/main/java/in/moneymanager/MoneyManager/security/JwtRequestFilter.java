@@ -37,7 +37,11 @@ public class JwtRequestFilter extends OncePerRequestFilter {
                 path.equals("/activate") ||
                 path.equals("/status") ||
                 path.equals("/health") ||
-                path.equals("/refresh")) {
+                path.equals("/refresh") ||
+                path.equals("/forgot-password") ||
+                path.equals("/reset-password") ||
+                path.equals(("/validate-reset-token")))
+        {
 
             filterChain.doFilter(request, response);
             return;
