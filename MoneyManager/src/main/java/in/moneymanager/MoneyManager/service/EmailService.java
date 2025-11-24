@@ -44,4 +44,21 @@ public class EmailService {
         helper.addAttachment(filename,new ByteArrayResource(attachment));
         mailSender.send(message);
     }
+
+    public void sendHtmlEmail(String to, String subject, String htmlContent) {
+
+        try{
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message,"utf-8");
+            helper.setFrom(fromEmail);
+            helper.setTo(to);
+            helper.setSubject(subject);
+            helper.setText(htmlContent, true);
+            mailSender.send(message);
+        }
+        catch (Exception exp){
+            throw new RuntimeException("Failed to Send Mail : " + exp);
+        }
+    }
+
 }

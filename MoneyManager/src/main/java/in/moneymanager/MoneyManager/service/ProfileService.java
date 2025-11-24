@@ -6,6 +6,7 @@ import in.moneymanager.MoneyManager.entity.ProfileEntity;
 import in.moneymanager.MoneyManager.entity.RefreshToken;
 import in.moneymanager.MoneyManager.repository.ProfileRepository;
 import in.moneymanager.MoneyManager.util.JwtUtil;
+import in.moneymanager.MoneyManager.util.PasswordValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -30,12 +31,16 @@ public class ProfileService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtUtil jwtUtil;
+    private final PasswordValidator passwordValidator;
 
     @Value("${money.manager.backend.url}")
     private String activationURL;
     private final RefreshTokenService refreshTokenService;
 
     public ProfileDTO registerProfile(ProfileDTO profileDTO){
+        // Validate the password strength
+        passwordValidator.validate(profileDTO.getPassword());
+
         ProfileEntity newProfile = toEntity(profileDTO);
         newProfile.setActivationToken(UUID.randomUUID().toString());
         newProfile = profileRepository.save(newProfile);
