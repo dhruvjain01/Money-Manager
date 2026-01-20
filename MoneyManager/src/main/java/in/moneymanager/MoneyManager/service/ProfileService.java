@@ -1,27 +1,29 @@
 package in.moneymanager.MoneyManager.service;
 
-import in.moneymanager.MoneyManager.dto.AuthDTO;
+import in.moneymanager.MoneyManager.dto.LoginRequest;
+import in.moneymanager.MoneyManager.dto.LoginResponse;
 import in.moneymanager.MoneyManager.dto.ProfileDTO;
 import in.moneymanager.MoneyManager.entity.ProfileEntity;
+import in.moneymanager.MoneyManager.entity.RefreshToken;
 import in.moneymanager.MoneyManager.repository.ProfileRepository;
+import in.moneymanager.MoneyManager.repository.RefreshTokenRepository;
 import in.moneymanager.MoneyManager.util.JwtUtil;
+import in.moneymanager.MoneyManager.util.PasswordValidator;
+import in.moneymanager.MoneyManager.util.RefreshTokenUtil;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.time.Instant;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -32,11 +34,17 @@ public class ProfileService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtUtil jwtUtil;
+    private final PasswordValidator passwordValidator;
+    private final RefreshTokenUtil refreshTokenUtil;
+    private final RefreshTokenRepository refreshTokenRepository;
 
     @Value("${money.manager.backend.url}")
     private String activationURL;
 
     public ProfileDTO registerProfile(ProfileDTO profileDTO){
+        // Validate the password strength
+        passwordValidator.validate(profileDTO.getPassword());
+
         ProfileEntity newProfile = toEntity(profileDTO);
         newProfile.setActivationToken(UUID.randomUUID().toString());
         newProfile = profileRepository.save(newProfile);
@@ -87,11 +95,15 @@ public class ProfileService {
                 .orElse(false);
     }
 
-    public ProfileEntity getCurrentProfile(){
+    public ProfileEntity getCurrentProfile() {
+
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        return profileRepository.findByEmail(authentication.getName())
-                .orElseThrow(() ->
-                        new UsernameNotFoundException("Profile  not found with email " + authentication.getName()));
+
+        if (authentication.getPrincipal() instanceof ProfileEntity profile) {
+            return profile;
+        }
+
+        throw new UsernameNotFoundException("Profile not found with email " + authentication.getPrincipal());
     }
 
     public ProfileDTO getPublicProfile(String email){
@@ -106,27 +118,125 @@ public class ProfileService {
         return toDTO(currentUser);
     }
 
-    public Map<String, Object> authenticateAndGenerateToken(AuthDTO authDTO) {
-        try {
-            // 1. Authenticate the user
-            authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(authDTO.getEmail(), authDTO.getPassword())
-            );
+    public LoginResponse login(LoginRequest request, HttpServletResponse response) {
 
-            // 2. Generate JWT token
-            String token = jwtUtil.generateToken(authDTO.getEmail());
+        authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(
+                        request.getEmail(),
+                        request.getPassword()
+                )
+        );
 
-            // 3. Build response
-            Map<String, Object> response = new HashMap<>();
-            response.put("user", getPublicProfile(authDTO.getEmail()));
-            response.put("token", token);
+        ProfileEntity user = profileRepository.findByEmail(request.getEmail())
+                .orElseThrow(() ->
+                        new RuntimeException("User not found")
+                );
 
-            return response;
-
-        } catch (BadCredentialsException e) {
-            throw new BadCredentialsException("Invalid email or password");
-        } catch (AuthenticationException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Authentication failed: " + e.getMessage());
+        if (!isAccountActive(user.getEmail())) {
+            throw new RuntimeException("Please verify your email before logging in");
         }
+
+        String accessToken = jwtUtil.generateToken(user);
+
+        // 🔐 NEW refresh session
+        RefreshToken refreshToken = new RefreshToken();
+        Instant now = Instant.now();
+
+        refreshToken.setUser(user);
+        refreshToken.setToken(refreshTokenUtil.generateToken());
+        refreshToken.setCreatedAt(now);
+        refreshToken.setExpiresAt(now.plusSeconds(24 * 60 * 60)); // 1 Day
+        refreshToken.setRevoked(false);
+
+        refreshTokenRepository.save(refreshToken);
+
+        List<String> paths = List.of("/login", "/register", "/logout","/activate","/reset-password","/forgot-password","/validate-reset-token","/refresh");
+
+        ResponseCookie cookie = ResponseCookie.from("refreshToken", refreshToken.getToken())
+                .httpOnly(true)
+                .secure(false) // localhost
+                .sameSite("Strict")
+                .path(String.valueOf(paths))
+                .maxAge(24 * 60 * 60) // 1 day
+                .build();
+
+        response.addHeader("Set-Cookie", cookie.toString());
+
+        return new LoginResponse(
+                Long.toString(user.getId()),
+                user.getEmail(),
+                accessToken
+        );
+    }
+
+    // ================= REFRESH =================
+
+    public LoginResponse refresh(String refreshTokenValue, HttpServletResponse response) {
+
+        if (refreshTokenValue == null) {
+            throw new RuntimeException("Refresh token missing");
+        }
+
+        RefreshToken token = refreshTokenRepository
+                .findByToken(refreshTokenValue)
+                .orElseThrow(() ->
+                        new RuntimeException("Invalid refresh token")
+                );
+
+        if (token.isRevoked() || token.getExpiresAt().isBefore(Instant.now())) {
+            throw new RuntimeException("Refresh token expired");
+        }
+
+        // 🔁 Rotate token ONLY (do NOT extend expiry)
+        String newTokenValue = refreshTokenUtil.generateToken();
+        token.setToken(newTokenValue);
+
+        refreshTokenRepository.save(token);
+
+        List<String> paths = List.of("/login", "/register", "/logout","/activate","/reset-password","/forgot-password","/validate-reset-token","/refresh");
+
+        ResponseCookie cookie = ResponseCookie.from("refreshToken", newTokenValue)
+                .httpOnly(true)
+                .secure(false)
+                .sameSite("Strict")
+                .path(String.valueOf(paths))
+                .maxAge(24 * 60 * 60) // 1 Day
+                .build();
+
+        response.addHeader("Set-Cookie", cookie.toString());
+
+        String newAccessToken = jwtUtil.generateToken(token.getUser());
+
+        return new LoginResponse(
+                Long.toString(token.getUser().getId()),
+                token.getUser().getEmail(),
+                newAccessToken
+        );
+    }
+
+    // ================= LOGOUT =================
+
+    public void logout(String refreshTokenValue, HttpServletResponse response) {
+
+        System.out.println("LOGOUT");
+        System.out.println("RT : " + refreshTokenValue);
+        if (refreshTokenValue != null) {
+            refreshTokenRepository.findByToken(refreshTokenValue)
+                    .ifPresent(token -> {
+                        token.setRevoked(true);
+                        refreshTokenRepository.save(token);
+                    });
+        }
+
+        List<String> paths = List.of("/login", "/register", "/logout","/activate","/reset-password","/forgot-password","/validate-reset-token","/refresh");
+
+        ResponseCookie cookie = ResponseCookie.from("refreshToken", "")
+                .httpOnly(true)
+                .secure(false)
+                .path(String.valueOf(paths))
+                .maxAge(0)
+                .build();
+
+        response.addHeader("Set-Cookie", cookie.toString());
     }
 }

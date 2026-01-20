@@ -5,11 +5,10 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.apache.commons.lang3.ObjectUtils;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Entity
 @Table(name = "table_profiles")
@@ -39,11 +38,11 @@ public class ProfileEntity {
     // Store the creation time stamp at which the profile was created and ensuring that the column cannot be updated
     @Column(updatable = false)
     @CreationTimestamp
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     // Store the time stamp at which the profile was last updated
     @UpdateTimestamp
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 
     // Store the flag to see if the user has activated the profile via email or not
     private Boolean isActive;

@@ -34,7 +34,9 @@ build/
 .env.*
 application-*.yml
 application-*.yaml
-application-*.properties
+application*.properties
 
 ### VS Code ###
 .vscode/
+
+.DS_Store
