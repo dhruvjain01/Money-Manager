@@ -38,3 +38,5 @@ application*.properties
 
 ### VS Code ###
 .vscode/
+
+.DS_Store
