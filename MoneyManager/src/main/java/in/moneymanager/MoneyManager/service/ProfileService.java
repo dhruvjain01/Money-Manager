@@ -167,7 +167,7 @@ public class ProfileService {
         ResponseCookie cookie = ResponseCookie.from("refreshToken", refreshToken.getToken())
                 .httpOnly(true)
                 .secure(secureCookie)
-                .sameSite("Strict")
+                .sameSite(secureCookie ? "None" : "Lax")
                 .path("/")
                 .maxAge(24 * 60 * 60) // 1 day
                 .build();
@@ -208,7 +208,7 @@ public class ProfileService {
         ResponseCookie cookie = ResponseCookie.from("refreshToken", newTokenValue)
                 .httpOnly(true)
                 .secure(secureCookie)
-                .sameSite("Strict")
+                .sameSite(secureCookie ? "None" : "Lax")
                 .path("/")
                 .maxAge(24 * 60 * 60) // 1 Day
                 .build();
@@ -241,7 +241,7 @@ public class ProfileService {
         ResponseCookie cookie = ResponseCookie.from("refreshToken", "")
                 .httpOnly(true)
                 .secure(secureCookie)
-                .sameSite("Strict")
+                .sameSite(secureCookie ? "None" : "Lax")
                 .path("/")
                 .maxAge(0)
                 .build();
