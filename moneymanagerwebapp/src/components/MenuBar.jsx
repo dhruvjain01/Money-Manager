@@ -3,7 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { assets } from "../assets/assets.js";
 import { X, Menu, User, LogOut } from "lucide-react";
 import { AppContext } from "../context/AppContext.jsx";
-import Sidebar from "./SideBar.jsx";
+import Sidebar from "./Sidebar.jsx";
+import axiosConfig from "../util/axiosConfig.js";
+import { API_ENDPOINTS } from "../util/apiEndpoints.js";
 
 const MenuBar = ({activeMenu}) => {
   const [openSideMenu, setOpenSideMenu] = useState(false);
@@ -12,7 +14,12 @@ const MenuBar = ({activeMenu}) => {
   const { user, clearUser } = useContext(AppContext);
   const navigate = useNavigate();
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await axiosConfig.post(API_ENDPOINTS.LOGOUT);
+    } catch (_) {
+      // Ignore logout API errors and continue local cleanup.
+    }
     clearUser();
     setShowDropdown(false);
     navigate("/login");

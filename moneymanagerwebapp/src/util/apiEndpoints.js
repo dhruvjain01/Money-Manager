@@ -1,10 +1,16 @@
-export const { BASE_URL } = "http://localhost:8080/api/v1.0";
+export const BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api/v1.0";
 
 const CLOUDINARY_CLOUD_NAME = "dbcxdtxot";
 
 export const API_ENDPOINTS = {
     LOGIN: "/login",
+    REFRESH: "/refresh",
+    LOGOUT: "/Logout",
     REGISTER: "/register",
+    FORGOT_PASSWORD: "/forgot-password",
+    RESET_PASSWORD: "/reset-password",
+    VALIDATE_RESET_TOKEN: "/validate-reset-token",
     GET_ALL_CATEGORIES: "/categories",
     ADD_CATEGORIES: "/categories",
     UPDATE_CATEGORY: (categoryId) => `/categories/${categoryId}`,

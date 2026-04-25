@@ -65,7 +65,7 @@ const Category = ({children}) => {
                 fetchCategoriesDetails();
             }
         } catch (error) {
-            toast.error(error.response?.data?.message || "Failed To Add Category");
+            toast.error(error.response?.data?.error || "Failed To Add Category");
             console.error("Error occured  : ",error);
         }
     }
@@ -93,7 +93,7 @@ const Category = ({children}) => {
             toast.success("Category Updated Successfully");
             fetchCategoriesDetails();
         } catch (error) {
-            toast.error(error.response?.data?.message || "Failed to Update the Category");
+            toast.error(error.response?.data?.error || "Failed to Update the Category");
         }
     }
 

@@ -37,7 +37,7 @@ const Filter = () => {
             setTransactions(transactionsWithType);
         } catch (error) {
             console.log("Failed to fetch transactions", error);
-            toast.error(error.message || "Failed to fetch Transactions. Please try again");
+            toast.error(error.response?.data?.error || "Failed to fetch Transactions. Please try again");
         } finally {
             setLoading(false);
         }
@@ -95,13 +95,13 @@ const Filter = () => {
                             <label htmlFor="sortField" className="block text-sm font-medium text-gray-700 mb-1">Sort Field</label>
                             <select
                                 value={sortField}
-                                id="sortorder"
+                                id="sortField"
                                 className="w-full bg-transparent outline-none border border-gray-300 rounded-md py-2 px-3 text-gray-700 leading-tight focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
                                 onChange={e => setSortField(e.target.value)}
                             >
                                 <option value="date">Date</option>
                                 <option value="amount">Amount</option>
-                                <option value="category">Category</option>
+                                <option value="name">Name</option>
                             </select>
                         </div>
 
