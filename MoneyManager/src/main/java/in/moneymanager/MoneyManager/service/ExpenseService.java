@@ -1,6 +1,5 @@
 package in.moneymanager.MoneyManager.service;
 
-import in.moneymanager.MoneyManager.dto.CategoryDTO;
 import in.moneymanager.MoneyManager.dto.ExpenseDTO;
 import in.moneymanager.MoneyManager.entity.CategoryEntity;
 import in.moneymanager.MoneyManager.entity.ExpenseEntity;
@@ -26,8 +25,9 @@ public class ExpenseService {
 
     public ExpenseDTO addExpense(ExpenseDTO expenseDTO){
         ProfileEntity profile = profileService.getCurrentProfile();
-        CategoryEntity category = categoryRepository.findById(expenseDTO.getCategoryId())
-                .orElseThrow(() -> new RuntimeException("Category not found"));
+        CategoryEntity category = categoryRepository
+                .findByIdAndProfileId(expenseDTO.getCategoryId(), profile.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found"));
         ExpenseEntity expense = toEntity(expenseDTO,profile,category);
         expense = expenseRepository.save(expense);
         return toDTO(expense);
@@ -45,9 +45,9 @@ public class ExpenseService {
     public void deleteExpense(Long expenseId){
         ProfileEntity profile = profileService.getCurrentProfile();
         ExpenseEntity expense = expenseRepository.findById(expenseId)
-                .orElseThrow(() -> new RuntimeException("Expense not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Expense not found"));
         if(!expense.getProfile().getId().equals(profile.getId())){
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Unauthorized to delete this expense");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,"Unauthorized to delete this expense");
         }
         expenseRepository.delete(expense);
     }

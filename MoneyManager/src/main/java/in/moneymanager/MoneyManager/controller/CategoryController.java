@@ -1,7 +1,6 @@
 package in.moneymanager.MoneyManager.controller;
 
 import in.moneymanager.MoneyManager.dto.CategoryDTO;
-import in.moneymanager.MoneyManager.entity.CategoryEntity;
 import in.moneymanager.MoneyManager.service.CategoryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -19,7 +18,6 @@ public class CategoryController {
 
     @PostMapping
     public ResponseEntity<CategoryDTO> saveCategory(@RequestBody CategoryDTO categoryDTO){
-        System.out.println("IN");
         CategoryDTO savedCategory = categoryService.saveCategory(categoryDTO);
         return ResponseEntity.status(HttpStatus.CREATED).body(savedCategory);
     }

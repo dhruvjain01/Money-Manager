@@ -21,9 +21,11 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.util.*;
+import org.springframework.http.HttpStatus;
 
 @Service
 @RequiredArgsConstructor
@@ -41,7 +43,18 @@ public class ProfileService {
     @Value("${money.manager.backend.url}")
     private String activationURL;
 
+    @Value("${app.cookie.secure:false}")
+    private boolean secureCookie;
+
     public ProfileDTO registerProfile(ProfileDTO profileDTO){
+        if (profileDTO.getEmail() == null || profileDTO.getEmail().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Email is required");
+        }
+
+        if (profileRepository.findByEmail(profileDTO.getEmail()).isPresent()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already registered");
+        }
+
         // Validate the password strength
         passwordValidator.validate(profileDTO.getPassword());
 
@@ -83,6 +96,7 @@ public class ProfileService {
         return profileRepository.findByActivationToken(activationToken)
                 .map(profile -> {
                     profile.setIsActive(true);
+                    profile.setActivationToken(null);
                     profileRepository.save(profile);
                     return true;
                 })
@@ -113,7 +127,7 @@ public class ProfileService {
         }
         else {
             currentUser = profileRepository.findByEmail(email)
-                    .orElseThrow(() -> new UsernameNotFoundException("Profile Not  found with email : " + email));
+                    .orElseThrow(() -> new UsernameNotFoundException("Profile not found with email : " + email));
         }
         return toDTO(currentUser);
     }
@@ -129,11 +143,11 @@ public class ProfileService {
 
         ProfileEntity user = profileRepository.findByEmail(request.getEmail())
                 .orElseThrow(() ->
-                        new RuntimeException("User not found")
+                        new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid email or password")
                 );
 
         if (!isAccountActive(user.getEmail())) {
-            throw new RuntimeException("Please verify your email before logging in");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Please verify your email before logging in");
         }
 
         String accessToken = jwtUtil.generateToken(user);
@@ -150,13 +164,11 @@ public class ProfileService {
 
         refreshTokenRepository.save(refreshToken);
 
-        List<String> paths = List.of("/login", "/register", "/logout","/activate","/reset-password","/forgot-password","/validate-reset-token","/refresh");
-
         ResponseCookie cookie = ResponseCookie.from("refreshToken", refreshToken.getToken())
                 .httpOnly(true)
-                .secure(false) // localhost
+                .secure(secureCookie)
                 .sameSite("Strict")
-                .path(String.valueOf(paths))
+                .path("/")
                 .maxAge(24 * 60 * 60) // 1 day
                 .build();
 
@@ -174,17 +186,17 @@ public class ProfileService {
     public LoginResponse refresh(String refreshTokenValue, HttpServletResponse response) {
 
         if (refreshTokenValue == null) {
-            throw new RuntimeException("Refresh token missing");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Refresh token missing");
         }
 
         RefreshToken token = refreshTokenRepository
                 .findByToken(refreshTokenValue)
                 .orElseThrow(() ->
-                        new RuntimeException("Invalid refresh token")
+                        new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid refresh token")
                 );
 
         if (token.isRevoked() || token.getExpiresAt().isBefore(Instant.now())) {
-            throw new RuntimeException("Refresh token expired");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Refresh token expired");
         }
 
         // 🔁 Rotate token ONLY (do NOT extend expiry)
@@ -193,13 +205,11 @@ public class ProfileService {
 
         refreshTokenRepository.save(token);
 
-        List<String> paths = List.of("/login", "/register", "/logout","/activate","/reset-password","/forgot-password","/validate-reset-token","/refresh");
-
         ResponseCookie cookie = ResponseCookie.from("refreshToken", newTokenValue)
                 .httpOnly(true)
-                .secure(false)
+                .secure(secureCookie)
                 .sameSite("Strict")
-                .path(String.valueOf(paths))
+                .path("/")
                 .maxAge(24 * 60 * 60) // 1 Day
                 .build();
 
@@ -228,12 +238,11 @@ public class ProfileService {
                     });
         }
 
-        List<String> paths = List.of("/login", "/register", "/logout","/activate","/reset-password","/forgot-password","/validate-reset-token","/refresh");
-
         ResponseCookie cookie = ResponseCookie.from("refreshToken", "")
                 .httpOnly(true)
-                .secure(false)
-                .path(String.valueOf(paths))
+                .secure(secureCookie)
+                .sameSite("Strict")
+                .path("/")
                 .maxAge(0)
                 .build();
 
