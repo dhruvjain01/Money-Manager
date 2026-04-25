@@ -52,39 +52,39 @@ const Home = () => {
                         <InfoCard
                             icon={<WalletCards />}
                             label="Total Balance"
-                            value={addThousandsSeparator(dashboardData?.["Total Balance"] || 0)}
+                            value={addThousandsSeparator(dashboardData?.totalBalance || 0)}
                             color="bg-purple-800"
                         />
                         <InfoCard
                             icon={<Wallet />}
                             label="Total Income"
-                            value={addThousandsSeparator(dashboardData?.["Total Income"] || 0)}
+                            value={addThousandsSeparator(dashboardData?.totalIncome || 0)}
                             color="bg-green-800"
                         />
                         <InfoCard
                             icon={<Coins />}
                             label="Total Expense"
-                            value={addThousandsSeparator(dashboardData?.["Total Expense"] || 0)}
+                            value={addThousandsSeparator(dashboardData?.totalExpense || 0)}
                             color="bg-red-800"
                         />
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                         {/* Recent transactions */}
                         <RecentTrasactions
-                            transactions={dashboardData?.["Recent Transactions"]}
+                            transactions={dashboardData?.recentTransactions}
                             onMore={() => navigate("/expense")}
                         />
 
                         {/* finance overview chart */}
                         <FinanceOverview
-                            totalBalance={dashboardData?.["Total Balance"] || 0}
-                            totalIncome={dashboardData?.["Total Income"] || 0}
-                            totalExpense={dashboardData?.["Total Expense"] || 0}
+                            totalBalance={dashboardData?.totalBalance || 0}
+                            totalIncome={dashboardData?.totalIncome || 0}
+                            totalExpense={dashboardData?.totalExpense || 0}
                         />
 
                         {/* Expense transactions */}
                         <Transactions
-                            transactions={ dashboardData?.["Recent 5 Expenses"]}
+                            transactions={ dashboardData?.recentExpenses}
                             onMore={ () => navigate("/expense") }
                             type="expense"
                             title="Recent Expenses"
@@ -92,7 +92,7 @@ const Home = () => {
                         
                         {/* Income transactions */}
                         <Transactions
-                            transactions={ dashboardData?.["Recent 5 Incomes"]}
+                            transactions={ dashboardData?.recentIncomes}
                             onMore={ () => navigate("/income") }
                             type="income"
                             title="Recent Incomes"

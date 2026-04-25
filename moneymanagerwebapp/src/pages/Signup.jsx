@@ -67,12 +67,16 @@ const Signup = () => {
       }
       const response = await axiosConfig.post(API_ENDPOINTS.REGISTER, payload);
       if (response.status === 201) {
-        toast.success("Profile created successfully.");
-        navigate("/login");
+        toast.success("Account created. Please check your email and verify your account before login.");
+        navigate("/login", {
+          state: {
+            activationNotice: `We sent an activation link to ${email}. Please verify your account before logging in.`,
+          },
+        });
       }
     } catch (err) {
       console.error("Something went wrong", err);
-      setError(err.message || "Signup failed, please try again.");
+      setError(err.response?.data?.error || err.message || "Signup failed, please try again.");
     } finally {
       setIsLoading(false);
     }

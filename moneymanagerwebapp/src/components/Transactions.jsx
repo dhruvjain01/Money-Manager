@@ -19,7 +19,7 @@ const Transactions = ({transactions, onMore, type, title}) => {
                         key={item.id}
                         title={item.name}
                         icon={item.icon}
-                        date={moment(item.date).format("do MMM YYYY")}
+                        date={moment(item.date).format("Do MMM YYYY")}
                         amount={item.amount}
                         type={type}
                         hideDeleteBtn

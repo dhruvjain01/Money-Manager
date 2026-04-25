@@ -1,5 +1,5 @@
 import { useState, useContext } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import { assets } from "../assets/assets.js";
 import Input from "../components/Input.jsx";
 import { validateEmail } from "../util/validation.js";
@@ -16,7 +16,9 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const navigate = useNavigate();
-  const { setUser } = useContext(AppContext);
+  const location = useLocation();
+  const { setAuthSession } = useContext(AppContext);
+  const activationNotice = location.state?.activationNotice || "";
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -43,28 +45,33 @@ const Login = () => {
       });
 
       if (response.status === 200) {
-        const { user, token } = response.data;
+        const { userId, email: loggedInEmail, token } = response.data;
 
-        // Save JWT token if returned
-        if (token) {
-          localStorage.setItem("token", token);
-        }
+        const existingUser = JSON.parse(localStorage.getItem("user") || "null");
 
         // Update context and persist to localStorage
         const userData = {
-          fullName: user.fullName,
-          email: user.email,
-          profileImageUrl: user.profileImageUrl || null,
+          userId,
+          fullName:
+            existingUser?.email === loggedInEmail
+              ? existingUser.fullName
+              : loggedInEmail?.split("@")?.[0] || "User",
+          email: loggedInEmail,
+          profileImageUrl: existingUser?.email === loggedInEmail ? existingUser.profileImageUrl : null,
         };
-        setUser(userData);
-        localStorage.setItem("user", JSON.stringify(userData));
+        setAuthSession({ token, userData });
 
         toast.success("Login successful!");
         navigate("/dashboard");
       }
     } catch (err) {
       console.error("Login failed:", err);
-      setError(err.response?.data?.message || "Login failed. Please try again.");
+      const backendError = err.response?.data?.error || "Login failed. Please try again.";
+      if (backendError.toLowerCase().includes("verify your email")) {
+        setError("Please verify your email first. Check inbox/spam for the activation link, then try logging in.");
+      } else {
+        setError(backendError);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -87,6 +94,12 @@ const Login = () => {
           <p className="text-base text-gray-600 text-center mb-8">
             Please enter your credentials to login
           </p>
+
+          {activationNotice && (
+            <p className="text-blue-700 text-sm text-center bg-blue-50 border border-blue-100 p-2 rounded-md mb-4">
+              {activationNotice}
+            </p>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <Input
@@ -146,6 +159,15 @@ const Login = () => {
                 className="font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
               >
                 Signup
+              </Link>
+            </p>
+            <p className="text-sm text-gray-700 text-center mt-2">
+              Forgot password?{" "}
+              <Link
+                to="/forgot-password"
+                className="font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
+              >
+                Reset here
               </Link>
             </p>
           </form>

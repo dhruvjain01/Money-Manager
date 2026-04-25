@@ -39,7 +39,7 @@ const Income = () => {
         setCategories(response.data);
       }
     } catch (error) {
-      toast.error(error.data?.message || "Failed to fetch income categories");
+      toast.error(error.response?.data?.error || "Failed to fetch income categories");
     }
   };
 
@@ -70,7 +70,7 @@ const Income = () => {
         fetchIncomeCategories();
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to add income");
+      toast.error(error.response?.data?.error || "Failed to add income");
     }
   };
 
@@ -81,7 +81,7 @@ const Income = () => {
       toast.success("Income Deleted Successfully");
       fetchIncomeDetails();
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to delete income");
+      toast.error(error.response?.data?.error || "Failed to delete income");
     }
   };
     
@@ -100,19 +100,19 @@ const Income = () => {
             toast.success("Download income details successfully");
         } catch (error) {
             console.error('Error downloading income details: ', error);
-            toast.error(error.response?.data?.message || "Failed to download income");   
+            toast.error(error.response?.data?.error || "Failed to download income");   
         }
     }
 
     const handleEmailIncomeDetails = async () => {
         try {
-            const response = await axiosConfig.get(API_ENDPOINTS.EMAIL_INCOME);
+            const response = await axiosConfig.post(API_ENDPOINTS.EMAIL_INCOME);
             if (response.status === 200) {
                 toast.success("Income details emailed successfully");
             }
         } catch (error) {
             console.error('Error emailing income details: ', error);
-            toast.error(error.response?.data?.message || "Failed to email income");
+            toast.error(error.response?.data?.error || "Failed to email income");
         }
     }
 
