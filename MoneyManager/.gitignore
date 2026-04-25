@@ -40,3 +40,4 @@ application*.properties
 .vscode/
 
 .DS_Store
+docs/

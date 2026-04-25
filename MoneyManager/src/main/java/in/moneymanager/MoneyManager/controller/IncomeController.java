@@ -29,7 +29,7 @@ public class IncomeController {
     }
 
     @DeleteMapping("/{incomeId}")
-    public ResponseEntity<Void> deleteExpense(@PathVariable Long incomeId){
+    public ResponseEntity<Void> deleteIncome(@PathVariable Long incomeId){
         incomeService.deleteIncome(incomeId);
         return ResponseEntity.noContent().build();
     }

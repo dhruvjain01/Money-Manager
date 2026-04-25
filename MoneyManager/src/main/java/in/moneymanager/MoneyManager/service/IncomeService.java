@@ -1,9 +1,7 @@
 package in.moneymanager.MoneyManager.service;
 
-import in.moneymanager.MoneyManager.dto.ExpenseDTO;
 import in.moneymanager.MoneyManager.dto.IncomeDTO;
 import in.moneymanager.MoneyManager.entity.CategoryEntity;
-import in.moneymanager.MoneyManager.entity.ExpenseEntity;
 import in.moneymanager.MoneyManager.entity.IncomeEntity;
 import in.moneymanager.MoneyManager.entity.ProfileEntity;
 import in.moneymanager.MoneyManager.repository.CategoryRepository;
@@ -27,8 +25,9 @@ public class IncomeService {
 
     public IncomeDTO addIncome(IncomeDTO incomeDTO){
         ProfileEntity profile = profileService.getCurrentProfile();
-        CategoryEntity category = categoryRepository.findById(incomeDTO.getCategoryId())
-                .orElseThrow(() -> new RuntimeException("Category not found"));
+        CategoryEntity category = categoryRepository
+                .findByIdAndProfileId(incomeDTO.getCategoryId(), profile.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found"));
         IncomeEntity income = toEntity(incomeDTO,profile,category);
         income = incomeRepository.save(income);
         return toDTO(income);
@@ -46,9 +45,9 @@ public class IncomeService {
     public void deleteIncome(Long incomeId){
         ProfileEntity profile = profileService.getCurrentProfile();
         IncomeEntity income = incomeRepository.findById(incomeId)
-                .orElseThrow(() -> new RuntimeException("Income not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Income not found"));
         if(!income.getProfile().getId().equals(profile.getId())){
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Unauthorized to delete this income");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,"Unauthorized to delete this income");
         }
         incomeRepository.delete(income);
     }
@@ -90,7 +89,7 @@ public class IncomeService {
                 .amount(entity.getAmount())
                 .icon(entity.getIcon())
                 .categoryId(entity.getCategory() != null ? entity.getCategory().getId() : null)
-                .categoryName(entity.getName() != null ? entity.getCategory().getName() : null)
+                .categoryName(entity.getCategory() != null ? entity.getCategory().getName() : null)
                 .date(entity.getDate())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())

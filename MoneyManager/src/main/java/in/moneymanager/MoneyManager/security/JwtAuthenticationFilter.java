@@ -3,11 +3,13 @@ package in.moneymanager.MoneyManager.security;
 import in.moneymanager.MoneyManager.entity.ProfileEntity;
 import in.moneymanager.MoneyManager.repository.ProfileRepository;
 import in.moneymanager.MoneyManager.util.JwtUtil;
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -18,6 +20,7 @@ import java.util.List;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
@@ -36,9 +39,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                 if (userId != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 
-                    ProfileEntity user = profileRepository
-                            .findById(Long.valueOf(userId))
-                            .orElse(null);
+                    ProfileEntity user = profileRepository.findById(Long.valueOf(userId)).orElse(null);
+
+                    if (user == null) {
+                        filterChain.doFilter(request, response);
+                        return;
+                    }
 
                     UsernamePasswordAuthenticationToken authentication =
                             new UsernamePasswordAuthenticationToken(
@@ -50,7 +56,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     SecurityContextHolder.getContext()
                             .setAuthentication(authentication);
                 }
-            } catch (Exception ignored) {}
+            } catch (JwtException | IllegalArgumentException ex) {
+                log.debug("Invalid JWT token provided: {}", ex.getMessage());
+            }
         }
         filterChain.doFilter(request, response);
     }

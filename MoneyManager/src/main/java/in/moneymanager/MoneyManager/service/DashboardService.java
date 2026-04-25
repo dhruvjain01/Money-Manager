@@ -45,12 +45,12 @@ public class DashboardService {
         BigDecimal totalIncome = incomeService.totalIncome();
         BigDecimal totalExpense = expenseService.totalExpenses();
 
-        data.put("Total Balance", totalIncome.subtract(totalExpense));
-        data.put("Total Income", totalIncome);
-        data.put("Total Expense", totalExpense);
-        data.put("Recent 5 Expenses", latestExpenses);
-        data.put("Recent 5 Incomes", latestIncomes);
-        data.put("Recent Transactions", recentTransactions);
+        data.put("totalBalance", totalIncome.subtract(totalExpense));
+        data.put("totalIncome", totalIncome);
+        data.put("totalExpense", totalExpense);
+        data.put("recentExpenses", latestExpenses);
+        data.put("recentIncomes", latestIncomes);
+        data.put("recentTransactions", recentTransactions);
         return data;
     }
 

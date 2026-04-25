@@ -40,7 +40,7 @@ public class ExcelService {
             workbook.write(os);
         }
         catch (Exception e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Something went wrong" + e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to generate income excel report");
         }
     }
 
@@ -64,6 +64,8 @@ public class ExcelService {
                         row.createCell(4).setCellValue(expense.getAmount()!=null ? expense.getAmount().doubleValue() : 0);
                     });
             workbook.write(os);
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to generate expense excel report");
         }
     }
 }

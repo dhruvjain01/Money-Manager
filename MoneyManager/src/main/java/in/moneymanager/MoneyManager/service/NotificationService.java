@@ -6,6 +6,7 @@ import in.moneymanager.MoneyManager.repository.ProfileRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -23,7 +24,7 @@ public class NotificationService {
     @Value("${money.manager.frontend.url}")
     private String frontendUrl;
 
-    @Scheduled(cron = "0 0 22 * * *", zone = "IST")
+    @Scheduled(cron = "0 0 22 * * *", zone = "Asia/Kolkata")
     public void sendDailyIncomeExpenseReminderMail(){
         log.info("Job Started : sendDailyIncomeExpenseReminderMail()");
         List<ProfileEntity> profiles = profileRepository.findAll();
@@ -32,12 +33,12 @@ public class NotificationService {
                     + "This is a friendly reminder to add your income and expenses for today in Money Manager <br><br>"
                     + "<a href="+frontendUrl+" style='display: inline-block;padding:10px 20px;background-color:#4CAF50; color : #fff ; text-decoration : none; border-radius : 5px; font-weight : bold; '>Go to Money Manager</a>"
                     + "<br><br>Best regards, <br>Money Manager Team";
-            emailService.sendEmail(profile.getEmail(),"Reminder : Please add your daily income and expenses",body);
+            emailService.sendHtmlEmail(profile.getEmail(),"Reminder : Please add your daily income and expenses",body);
         }
         log.info("Job Completed : sendDailyIncomeExpenseReminderMail()");
     }
 
-    @Scheduled(cron = "0 0 23 * * *", zone = "IST")
+    @Scheduled(cron = "0 0 23 * * *", zone = "Asia/Kolkata")
     public void sendDailyExpenseReport(){
         log.info("Job Started : sendDailyExpenseReport()");
 
@@ -62,7 +63,7 @@ public class NotificationService {
                 }
                 table.append("</table>");
                 String body = "Hi " + profile.getFullName() + ",<br/><br/> Here is the summary of your expenses for today : <br/><br/>" + table + "<br/><br/>Best Regards,<br/>Money Manger Team<br/>";
-                emailService.sendEmail(profile.getEmail(), "Your Daily Expense Summary" ,body);
+                emailService.sendHtmlEmail(profile.getEmail(), "Your Daily Expense Summary" ,body);
             }
         }
 
