@@ -23,7 +23,12 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.*;
 import org.springframework.http.HttpStatus;
 
@@ -46,6 +51,9 @@ public class ProfileService {
     @Value("${app.cookie.secure:false}")
     private boolean secureCookie;
 
+    @Value("${jwt.refresh-expiration-ms}")
+    private long refreshExpirationMs;
+
     public ProfileDTO registerProfile(ProfileDTO profileDTO){
         if (profileDTO.getEmail() == null || profileDTO.getEmail().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Email is required");
@@ -64,8 +72,15 @@ public class ProfileService {
         //send activation email
         String activationTokenLink = activationURL + "/api/v1.0/activate?token=" + newProfile.getActivationToken();
         String subject = "Please Activate your Money Manager Account";
-        String body = "Thank you for signing up! Please activate your money manager account by clicking on the following link : " + activationTokenLink;
-        emailService.sendEmail(newProfile.getEmail(), subject, body);
+        String body = null;
+        try {
+            body = Files.readString(
+                    Paths.get("src/main/resources/html/verify-mail.html"));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        String html = body.replace("{{ACTIVATION_LINK}}", activationTokenLink);
+        emailService.sendHtmlEmail(newProfile.getEmail(), subject, html);
         return toDTO(newProfile);
     }
 
@@ -155,21 +170,22 @@ public class ProfileService {
         // 🔐 NEW refresh session
         RefreshToken refreshToken = new RefreshToken();
         Instant now = Instant.now();
+        String rawRefreshToken = refreshTokenUtil.generateToken();
 
         refreshToken.setUser(user);
-        refreshToken.setToken(refreshTokenUtil.generateToken());
+        refreshToken.setToken(refreshTokenUtil.hashToken(rawRefreshToken));
         refreshToken.setCreatedAt(now);
-        refreshToken.setExpiresAt(now.plusSeconds(24 * 60 * 60)); // 1 Day
+        refreshToken.setExpiresAt(now.plusMillis(refreshExpirationMs)); // 1 Day
         refreshToken.setRevoked(false);
 
         refreshTokenRepository.save(refreshToken);
 
-        ResponseCookie cookie = ResponseCookie.from("refreshToken", refreshToken.getToken())
+        ResponseCookie cookie = ResponseCookie.from("refreshToken",  rawRefreshToken)
                 .httpOnly(true)
                 .secure(secureCookie)
                 .sameSite(secureCookie ? "None" : "Lax")
                 .path("/")
-                .maxAge(24 * 60 * 60) // 1 day
+                .maxAge(refreshExpirationMs) // 1 day
                 .build();
 
         response.addHeader("Set-Cookie", cookie.toString());
@@ -190,7 +206,7 @@ public class ProfileService {
         }
 
         RefreshToken token = refreshTokenRepository
-                .findByToken(refreshTokenValue)
+                .findByToken(refreshTokenUtil.hashToken(refreshTokenValue))
                 .orElseThrow(() ->
                         new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid refresh token")
                 );
@@ -200,17 +216,19 @@ public class ProfileService {
         }
 
         // 🔁 Rotate token ONLY (do NOT extend expiry)
-        String newTokenValue = refreshTokenUtil.generateToken();
-        token.setToken(newTokenValue);
+        String newRawTokenValue = refreshTokenUtil.generateToken();
+        token.setToken(refreshTokenUtil.hashToken(newRawTokenValue));
 
         refreshTokenRepository.save(token);
 
-        ResponseCookie cookie = ResponseCookie.from("refreshToken", newTokenValue)
+        long remainingSeconds = remainingRefreshTokenTtlSeconds(token.getExpiresAt());
+
+        ResponseCookie cookie = ResponseCookie.from("refreshToken", newRawTokenValue)
                 .httpOnly(true)
                 .secure(secureCookie)
                 .sameSite(secureCookie ? "None" : "Lax")
                 .path("/")
-                .maxAge(24 * 60 * 60) // 1 Day
+                .maxAge(remainingSeconds) // 1 Day
                 .build();
 
         response.addHeader("Set-Cookie", cookie.toString());
@@ -227,11 +245,8 @@ public class ProfileService {
     // ================= LOGOUT =================
 
     public void logout(String refreshTokenValue, HttpServletResponse response) {
-
-        System.out.println("LOGOUT");
-        System.out.println("RT : " + refreshTokenValue);
         if (refreshTokenValue != null) {
-            refreshTokenRepository.findByToken(refreshTokenValue)
+            refreshTokenRepository.findByToken(refreshTokenUtil.hashToken(refreshTokenValue))
                     .ifPresent(token -> {
                         token.setRevoked(true);
                         refreshTokenRepository.save(token);
@@ -247,5 +262,13 @@ public class ProfileService {
                 .build();
 
         response.addHeader("Set-Cookie", cookie.toString());
+    }
+
+    private long remainingRefreshTokenTtlSeconds(Instant expiresAt) {
+        long seconds = Duration.between(Instant.now(), expiresAt).getSeconds();
+        if (seconds <= 0) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Refresh token expired");
+        }
+        return seconds;
     }
 }
