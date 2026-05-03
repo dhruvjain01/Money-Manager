@@ -13,6 +13,7 @@ import in.moneymanager.MoneyManager.util.RefreshTokenUtil;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -24,8 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -72,16 +72,19 @@ public class ProfileService {
         //send activation email
         String activationTokenLink = activationURL + "/api/v1.0/activate?token=" + newProfile.getActivationToken();
         String subject = "Please Activate your Money Manager Account";
-        String body = null;
-        try {
-            body = Files.readString(
-                    Paths.get("src/main/resources/html/verify-mail.html"));
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        String body = readTemplate("html/verify-mail.html");
         String html = body.replace("{{ACTIVATION_LINK}}", activationTokenLink);
         emailService.sendHtmlEmail(newProfile.getEmail(), subject, html);
         return toDTO(newProfile);
+    }
+
+    public String readTemplate(String classpathLocation) {
+        try {
+            ClassPathResource resource = new ClassPathResource(classpathLocation);
+            return new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new RuntimeException("Unable to load template: " + classpathLocation, e);
+        }
     }
 
     private ProfileEntity toEntity(ProfileDTO profileDTO){

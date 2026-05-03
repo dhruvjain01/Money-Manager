@@ -12,14 +12,14 @@ import in.moneymanager.MoneyManager.service.ProfileService;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.Map;
 
@@ -67,15 +67,7 @@ public class ProfileController {
 
             String resetLink = frontendUrl + "/reset-password?token=" + token.getToken();
 
-            String template = null;
-            try {
-                template = Files.readString(
-                        Paths.get("src/main/resources/html/reset-password.html")
-                );
-            } catch (IOException e) {
-                System.out.println("Exception " + e);
-                throw new RuntimeException(e);
-            }
+            String template = profileService.readTemplate("html/reset-password.html");
 
             String html = template.replace("{{RESET_LINK}}", resetLink)
                     .replace("${year}", String.valueOf(LocalDate.now().getYear()));
