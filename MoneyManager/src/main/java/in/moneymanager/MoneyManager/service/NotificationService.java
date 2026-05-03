@@ -11,6 +11,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 
 @Service
@@ -24,7 +25,9 @@ public class NotificationService {
     @Value("${money.manager.frontend.url}")
     private String frontendUrl;
 
-    @Scheduled(cron = "0 0 22 * * *", zone = "Asia/Kolkata")
+    private static final ZoneId IST_ZONE = ZoneId.of("Asia/Kolkata");
+
+    @Scheduled(cron = "0 0 22 * * *", zone = "${app.time-zone}")
     public void sendDailyIncomeExpenseReminderMail(){
         log.info("Job Started : sendDailyIncomeExpenseReminderMail()");
         List<ProfileEntity> profiles = profileRepository.findAll();
@@ -38,13 +41,13 @@ public class NotificationService {
         log.info("Job Completed : sendDailyIncomeExpenseReminderMail()");
     }
 
-    @Scheduled(cron = "0 0 23 * * *", zone = "Asia/Kolkata")
+    @Scheduled(cron = "0 0 23 * * *", zone = "${app.time-zone}")
     public void sendDailyExpenseReport(){
         log.info("Job Started : sendDailyExpenseReport()");
 
         List<ProfileEntity> profiles = profileRepository.findAll();
         for (ProfileEntity profile : profiles) {
-            List<ExpenseDTO> todayExpenses = expenseService.getExpensesForUsersOnDate(profile.getId(), LocalDate.now());
+            List<ExpenseDTO> todayExpenses = expenseService.getExpensesForUsersOnDate(profile.getId(), LocalDate.now(IST_ZONE));
             if(!todayExpenses.isEmpty()){
                 StringBuilder table = new StringBuilder();
                 table.append("<table style='border-collapse:collapse;width:100%;'>");
