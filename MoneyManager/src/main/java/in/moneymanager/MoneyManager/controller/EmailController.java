@@ -2,7 +2,6 @@ package in.moneymanager.MoneyManager.controller;
 
 import in.moneymanager.MoneyManager.entity.ProfileEntity;
 import in.moneymanager.MoneyManager.service.*;
-import jakarta.mail.MessagingException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -25,7 +24,7 @@ public class EmailController {
     private final ProfileService profileService;
 
     @PostMapping("/income-excel")
-    public ResponseEntity<Void> emailIncomeExcel() throws IOException, MessagingException {
+    public ResponseEntity<Void> emailIncomeExcel() throws IOException {
         ProfileEntity profile = profileService.getCurrentProfile();
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         excelService.writeIncomesToExcel(byteArrayOutputStream,incomeService.getCurrentMonthIncomesForCurrentUser());
@@ -38,7 +37,7 @@ public class EmailController {
     }
 
     @PostMapping("/expense-excel")
-    public ResponseEntity<Void> emailExpenseExcel() throws IOException, MessagingException {
+    public ResponseEntity<Void> emailExpenseExcel() throws IOException {
         ProfileEntity profile = profileService.getCurrentProfile();
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         excelService.writeExpensesToExcel(byteArrayOutputStream,expenseService.getCurrentMonthExpensesForCurrentUser());
